@@ -7,16 +7,13 @@ import os
 import sys
 print
 
-def test(data):
-	with open('TEST','w') as f:
-		f.write(data)
 
 class commands(object):	
 	def __init__(self):
 		pass
 	
 	def up(self,current_dir,new_cmd):
-		'''Move up file hierarchy one unit (unless at root dir); `ls` new dir contents'''	
+		'''Move up file hierarchy one unit (unless at root dir) and `ls` (new) dir contents'''	
 		if current_dir != '/':
 			current_dir = '/'.join(current_dir.split('/')[:-1])
 			if not current_dir:
@@ -40,7 +37,8 @@ class commands(object):
 		else:		
 			files = sp.Popen(('ls '+current_dir).split(),stdout=sp.PIPE).communicate()[0]
 			
-			if new_cmd.split()[1] in files.split():
+			new_dir = new_cmd.split()[1]
+			if new_dir in files.split() and os.path.isdir(current_dir+'/'+new_dir):
 				current_dir = current_dir + '/' + new_cmd.split()[1]
 				data = ''
 			else:
@@ -50,15 +48,34 @@ class commands(object):
 	
 	
 	def pwd(self,current_dir,new_cmd):
+		'''Print working directory'''
 		print json.dumps({'data':current_dir,'current_dir':current_dir})
 		return current_dir
 	
+	
+	def mkdir(self,current_dir,new_cmd):
+		'''Make new directory'''
+		cmd = 'mkdir %s/%s' %(current_dir, ''.join(new_cmd.split()[1:]))
+		sp.Popen( cmd.split(' ') )
+		print json.dumps({'data':'','current_dir':current_dir})
+		return current_dir
+		
+def test(data):
+	with open('TEST','w') as f:
+		f.write(data)
+		
 cmds = commands()		
 
 
 
 
 def main():
+	
+	aliases = {
+		'show'	: 'ls -al', 
+		'lg'	: 'ls | grep ', 
+		'sg'	: 'ls -al | grep '
+	}
 	
 	new_cmd = json.loads(cgi.FieldStorage()['package'].value)
 
@@ -77,6 +94,9 @@ def main():
 		current_dir = current_session['current_dir']
 		history = current_session['history']
 		cmd0 = new_cmd.split(' ')[0]
+		
+		if cmd0 in aliases:
+			new_cmd = aliases[cmd0] + ' '.join(new_cmd.split(' ')[1:])
 	
 		if cmd0 in [x for x in dir(cmds) if not x.startswith('__')]:
 			current_dir = getattr(cmds,cmd0)(current_dir=current_dir,new_cmd=new_cmd)	
