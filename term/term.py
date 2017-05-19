@@ -29,17 +29,37 @@ class commands(object):
 		return current_dir
 	
 	
-	def cd(self,current_dir,new_cmd):
+	def cd (self, current_dir, new_cmd):
 		'''Change directory'''
-		if new_cmd.split()[1] == '..':
-			current_dir = '/'.join(current_dir.split('/')[:-1])
-			data = ''
-		else:		
+		dirs = {
+			'..'	: '/'.join(current_dir.split('/')[:-1]),
+			'/'		: '/'
+		}
+		try:	
+			cmd1 = new_cmd.split()[1]
+		except:
+			cmd1 = ''
+		data = ''	
+		
+		if cmd1 in ['~','$HOME']:
+			current_dir = sp.Popen(('echo %s'%cmd1).split(),stdout=sp.PIPE).communicate()[0]
+			
+		elif cmd1 in dirs:
+			current_dir = dirs[cmd1]
+		
+			'''
+			elif new_cmd.split()[1] == '..':
+				current_dir = '/'.join(current_dir.split('/')[:-1])
+				data = ''
+			elif new_cmd.split()[1]
+			'''
+		else:	
+		
 			files = sp.Popen(('ls '+current_dir).split(),stdout=sp.PIPE).communicate()[0]
 			
-			new_dir = new_cmd.split()[1]
-			if new_dir in files.split() and os.path.isdir(current_dir+'/'+new_dir):
-				current_dir = current_dir + '/' + new_cmd.split()[1]
+			#new_dir = new_cmd.split()[1]
+			if cmd1 in files.split() and os.path.isdir(current_dir+'/'+cmd1):
+				current_dir = current_dir + '/' + cmd1
 				data = ''
 			else:
 				data = 'Directory not found'
@@ -59,6 +79,8 @@ class commands(object):
 		sp.Popen( cmd.split(' ') )
 		print json.dumps({'data':'','current_dir':current_dir})
 		return current_dir
+
+	
 		
 def test(data):
 	with open('TEST','w') as f:
@@ -67,14 +89,12 @@ def test(data):
 cmds = commands()		
 
 
-
-
 def main():
 	
 	aliases = {
-		'show'	: 'ls -al', 
-		'lg'	: 'ls | grep ', 
-		'sg'	: 'ls -al | grep '
+		'show'	: 'ls -al %current_dir', 
+		'lg'	: 'ls %current_dir | grep ', 
+		'sg'	: 'ls -al %current_dir | grep '
 	}
 	
 	new_cmd = json.loads(cgi.FieldStorage()['package'].value)
@@ -96,7 +116,7 @@ def main():
 		cmd0 = new_cmd.split(' ')[0]
 		
 		if cmd0 in aliases:
-			new_cmd = aliases[cmd0] + ' '.join(new_cmd.split(' ')[1:])
+			new_cmd = str(aliases[cmd0] + ' '.join(new_cmd.split(' ')[1:])).replace('%current_dir',current_dir)
 	
 		if cmd0 in [x for x in dir(cmds) if not x.startswith('__')]:
 			current_dir = getattr(cmds,cmd0)(current_dir=current_dir,new_cmd=new_cmd)	
@@ -116,6 +136,7 @@ def main():
 		with open('current_session','w') as f:
 			f.write(json.dumps(current_session))
 		
+		 
 
 if __name__ == '__main__':
 	main()
